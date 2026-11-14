@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The project follows
 
 ## [Unreleased]
 
+- A Multimode server that shuts down now waits for its sessions with other servers to end, instead of leaving them running behind it.
+
 ## [4.1.2] — 2026-11-14
 
 - Multimode servers and games now accept traffic figures above 1 Pbps, the first step to ranking the biggest networks properly: today everyone past 1 Pbps shows exactly 1.00 Pbps on the leaderboards. Games keep reporting at most 1 Pbps until servers have updated; a later version lifts that.

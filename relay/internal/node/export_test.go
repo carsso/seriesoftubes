@@ -193,3 +193,6 @@ func SetMaxQuotas(n int) func() {
 	maxQuotas = n
 	return func() { maxQuotas = old }
 }
+
+// Spawn runs f the way the relay runs its session goroutines.
+func (r *Relay) Spawn(f func()) bool { return r.spawn(f) }
