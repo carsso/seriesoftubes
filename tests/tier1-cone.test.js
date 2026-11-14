@@ -70,6 +70,21 @@ test('a network in nobody\'s cone still needs reaching directly', () => {
   assert.deepEqual(errors, []);
 });
 
+test('joining multiplayer keeps you Tier 1, even next to a player who is Tier 1 too', () => {
+  const { ev, errors } = load();
+  t1Club(ev);
+  ev("for(const n of NETS)if(!R.reachable[n.id]){if(!S.pops[n.pops[0]])S.pops[n.pops[0]]={day:0,bb:null,boost:0,down:0,routers:1,gen:false};S.pni.push({id:'i'+n.id,net:n.id,city:n.pops[0],tier:0});}compute()");
+  assert.equal(ev("isTier1()"), true);
+  // A player Tier 1 buys from no one, so no cone carries it and nothing reaches it without a deal of its own.
+  ev("S.fedn=fednClean({nets:[{k:'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQ',name:'Alice Net',asn:64512,home:'FR',pops:['par'],ix:[],mix:[300,300,400],tr:5e6,cust:3,pol:'open',q:1000,st:'active',ai:false,t1:true,bid:'',at:1}]});compute()");
+  const id = ev("fedNetId(S.fedn.nets[0].k)");
+  assert.equal(ev(`R.reachable.${id}`), false);
+  assert.ok(ev("R.reach") < 0.999, 'the player network does carry demand');
+  assert.equal(ev("isTier1()"), true, 'other players do not count for your rank');
+  assert.doesNotMatch(ev('t1Why()'), /Alice Net/);
+  assert.deepEqual(errors, []);
+});
+
 test('the long tail no longer stands between you and Tier 1', () => {
   const { ev, errors } = load();
   t1Club(ev);
