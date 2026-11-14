@@ -1503,6 +1503,21 @@ func (r *Relay) Run() {
 	go r.refreshRegistry()
 }
 
+// spawn runs f in a goroutine Close waits for; once Close has begun, it runs nothing and returns false.
+func (r *Relay) spawn(f func()) bool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.ctx.Err() != nil {
+		return false
+	}
+	r.wg.Add(1)
+	go func() {
+		defer r.wg.Done()
+		f()
+	}()
+	return true
+}
+
 func (r *Relay) loop(name string, every time.Duration, f func()) {
 	r.wg.Add(1)
 	go func() {

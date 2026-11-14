@@ -344,7 +344,7 @@ func (r *Relay) runPeer(s *session, server, node string) {
 	r.mu.Unlock()
 	r.o.Log.Info("sync: session up", "server", server, "node", node, "same", s.same)
 	if !s.same {
-		go r.retryLater(s)
+		r.spawn(func() { r.retryLater(s) })
 	}
 	defer func() {
 		r.mu.Lock()
@@ -877,7 +877,9 @@ func (r *Relay) dialLoop(ctx context.Context, key string, urls func() []string) 
 func (r *Relay) dialOnce(ctx, dctx context.Context, key, url string) error {
 	// The dial itself is bounded by dctx; the session lives with ctx.
 	done := make(chan error, 1)
-	go func() { done <- r.dialNode(dctx, key, url) }()
+	if !r.spawn(func() { done <- r.dialNode(dctx, key, url) }) {
+		return errClosed
+	}
 	select {
 	case err := <-done:
 		return err
