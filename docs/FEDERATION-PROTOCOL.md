@@ -253,6 +253,7 @@ only a `state` frame (9.3) or a `states` frame (9.4) carries one; anywhere a rec
 | Net | String matching `^[a-z0-9]{2,8}$`, the id of a computer-run network in the game's catalog (`NETS` in `src/game/30-networks/`; every id there has this shape, `tests/federation-exchanges.test.js` checks it). Like cities, the catalog is not part of this protocol: unknown ids are not refused, the game ignores them. A player's network is never a Net (it is a Key) |
 | CC | String matching `^[A-Z]{2}$`, a country code |
 | Mbps | Integer 0 to 1000000000 |
+| Traffic | Integer 0 to 1000000000000, in Mbps (up to 1 Ebps): a network's traffic as reported for the boards. Games send at most 1000000000 (1 Pbps) for now, so that servers and games from before Traffic, which refuse more, still take every record; a later version lifts that |
 | Money | Integer 0 to 1000000000000, in game money |
 | Days | Integer 1 to 3650, real days |
 | Count(n) | Integer 0 to n |
@@ -285,7 +286,7 @@ another one.
 | `ix` | [City] max 512 | Cities where it is at the exchange, unique, each also in `pops` |
 | `cust` | Count(10000000) | Number of customers |
 | `mix` | object | `{content, eyeball, enterprise}`, each Count(1000), summing to exactly 1000 (per mille of its traffic) |
-| `traffic` | object | `{in: Mbps, out: Mbps}`, its total traffic now |
+| `traffic` | object | `{in: Traffic, out: Traffic}`, its total traffic now |
 | `policy` | string | `open`, `selective` or `restrictive` |
 | `cond` | object | Required when `policy` is `selective`, refused (`bad_field`) otherwise. See below |
 | `rates` | object | Rate card, see below; `{}` when it sells nothing |
@@ -347,8 +348,8 @@ number at its maximum) is under the 40960-byte limit (13.2); the `records` vecto
 | `mode` | string | `normal`, `sandbox`, `open_gates`, `puzzle`, `scenario`, `weekly` or `architect`. Only `normal` is ranked |
 | `pops` | object | City → POPs in service in that city, 1 to 1000. At most 512 members (`too_many`); member names that are not City: `bad_field`; cities with none are left out. In this game version a network has at most one POP per city, so every count is 1; the count stays for later versions |
 | `pies` | Count(10000000), optional | Pies in service (`pieLiveAll()`). Absent: the save has no Pie in the Sky company |
-| `traffic` | [{key: Key, in: Mbps, out: Mbps}] max 256 | Traffic with each other player network right now: `in` received from it, `out` sent to it. Keys unique (`duplicate`), never the author's own (`bad_field`) |
-| `total` | Mbps, optional | The network's whole traffic right now, the busier direction: what the game shows as traffic served. Absent (older games): 0. Self-reported, nobody can confirm it; accepted, the boards are not competitive (ADR 0005) |
+| `traffic` | [{key: Key, in: Traffic, out: Traffic}] max 256 | Traffic with each other player network right now: `in` received from it, `out` sent to it. Keys unique (`duplicate`), never the author's own (`bad_field`) |
+| `total` | Traffic, optional | The network's whole traffic right now, the busier direction: what the game shows as traffic served. Absent (older games): 0. Self-reported, nobody can confirm it; accepted, the boards are not competitive (ADR 0005) |
 | `cust` | [Key] max 128, optional | Its transit customers among the player networks: those it sells transit to in a deal running now (5.3). Unique (`duplicate`), never the author's own key (`bad_field`). Absent: none. The cone board (10.4) counts an edge only when the customer confirms it in `up` |
 | `up` | [Key] max 16, optional | The player networks it buys transit from in a deal running now. Same rules as `cust` |
 | `tier1` | Bool | Tier 1 in the game's rank |
@@ -1192,7 +1193,9 @@ the total over the previous window (10.4, each over its own slots):
 growth = div((cur - prev) * 10000, max(prev, FLOOR))      in basis points (10000 = +100%)
 ```
 
-(for POPs and pies, `cur` and `prev` are each window's latest value, 10.4) with FLOOR = 10 for POPs and the customer cone, 100 for pies and 1000 (Mbps) for traffic and total traffic. Note floor division: -333.3 is -334.
+(for POPs and pies, `cur` and `prev` are each window's latest value, 10.4) with FLOOR = 10 for POPs and the customer cone, 100 for pies and 1000 (Mbps) for traffic and total traffic. Note floor division: -333.3 is -334. With Traffic values,
+`(cur - prev) * 10000` can pass 2^53 (256 partners of 10^12 Mbps: 2.56 × 10^18), so it is worked out exactly (JS:
+BigInt; Go: int64 holds it); the growth itself stays a safe integer.
 
 ### 10.6 Quiet networks
 

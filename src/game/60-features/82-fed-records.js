@@ -27,7 +27,7 @@ function fedLookDups(l){const m=new Map(),out=new Set();for(const [k,n] of l){co
 const fedFp=k=>{const u=fedBin(k,32);return u?[...u.subarray(0,3)].map(b=>b.toString(16).padStart(2,'0')).join(''):'';};
 const FdCity=v=>typeof v==='string'&&/^[a-z0-9]{2,8}$/.test(v)?null:FdBF,FdCC=v=>typeof v==='string'&&/^[A-Z]{2}$/.test(v)?null:FdBF;
 const FdInt=(lo,hi)=>v=>Number.isSafeInteger(v)&&v>=lo&&v<=hi?null:FdBF;
-const FdMbps=FdInt(0,1e9),FdMoney=FdInt(0,1e12),FdDays=FdInt(1,3650),FdBool=v=>typeof v==='boolean'?null:FdBF,FdOne=(...a)=>v=>a.includes(v)?null:FdBF;
+const FdMbps=FdInt(0,1e9),FdTraffic=FdInt(0,1e12),FdMoney=FdInt(0,1e12),FdDays=FdInt(1,3650),FdBool=v=>typeof v==='boolean'?null:FdBF,FdOne=(...a)=>v=>a.includes(v)?null:FdBF;
 // A node URL (§5): wss, a lower-case host name with a dot, or a local address (a LAN server), an optional port, a plain path.
 function FdUrl(v){if(typeof v!=='string'||v.length>200)return FdBF;const m=/^wss:\/\/([a-z0-9.-]+|\[[0-9a-f:]+\])(?::([1-9][0-9]{0,4}))?(\/[A-Za-z0-9._~\/-]*)?$/.exec(v);
   if(!m||m[2]&&+m[2]>65535)return FdBF;const h=m[1];
@@ -100,7 +100,7 @@ const FED_BODY={
     ['founded',(v,c)=>FdInt(0,fedDiv(c.rec.t,FED_DAY))(v)],['pops',FdList(FdCity,{max:512,set:1})],
     ['ix',(v,c)=>FdList(FdCity,{max:512,set:1})(v)||(Array.isArray(c.o.pops)&&v.every(x=>c.o.pops.includes(x))?null:FdBF)],
     ['cust',FdInt(0,1e7)],['mix',FdObj([['content',FdInt(0,1000)],['eyeball',FdInt(0,1000)],['enterprise',FdInt(0,1000)]],m=>m.content+m.eyeball+m.enterprise===1000?null:FdBF)],
-    ['traffic',FdObj([['in',FdMbps],['out',FdMbps]])],['policy',FdOne('open','selective','restrictive')],
+    ['traffic',FdObj([['in',FdTraffic],['out',FdTraffic]])],['policy',FdOne('open','selective','restrictive')],
     ['cond',(v,c)=>c.o.policy!=='selective'?FdBF:FdObj([['minMbps',FdMbps],['maxRatio',FdInt(100,100000)],['minShared',FdInt(0,64)],['rpki',FdBool],['tier1',FdBool],['ai',FdBool]])(v),1],
     ['rates',FdObj([['transit',FdObj([['perGbps',FdMoney],['commit',FdList(FdObj([['mbps',FdMbps],['off',FdInt(0,900)]]),{max:8,asc:1,by:x=>x.mbps})],['term',FdDays]]),1],
       ['pni',FdObj([['setup',FdMoney],['ports',FdPorts],['term',FdDays]]),1],['ix',FdIx,1],['wave',FdWave,1]])],
@@ -110,7 +110,7 @@ const FED_BODY={
     ['pops',v=>{if(!v||typeof v!=='object'||Array.isArray(v))return FdBF;const ks=Object.keys(v);if(ks.length>512)return 'too_many';
       for(const k of ks){if(FdCity(k)||FdInt(1,1000)(v[k]))return FdBF;}return null;}],
     ['pies',FdInt(0,1e7),1],
-    ['traffic',(v,c)=>FdList(FdObj([['key',FdK],['in',FdMbps],['out',FdMbps]]),{max:256,set:1,by:x=>x.key})(v)||(v.some(x=>x.key===c.rec.key)?FdBF:null)],['total',FdMbps,1],
+    ['traffic',(v,c)=>FdList(FdObj([['key',FdK],['in',FdTraffic],['out',FdTraffic]]),{max:256,set:1,by:x=>x.key})(v)||(v.some(x=>x.key===c.rec.key)?FdBF:null)],['total',FdTraffic,1],
     // Transit customers and upstreams (other player networks, never the author): the cone board (§5.2).
     ['cust',(v,c)=>FdKeys(FED_CUST_MAX)(v)||(v.includes(c.rec.key)?FdBF:null),1],['up',(v,c)=>FdKeys(FED_UP_MAX)(v)||(v.includes(c.rec.key)?FdBF:null),1],
     ['tier1',FdBool],['tier2',FdBool,1],['ai',FdObj([['model',FdText(1,64)],['harness',FdText(1,64)]]),1],['shareCountry',FdBool]]),

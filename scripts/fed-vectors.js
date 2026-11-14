@@ -336,7 +336,11 @@ const SID = rid(genesis);
   bad('stats-traffic-duplicate', 'The same network twice in traffic.', rec('stats', 'alice', T, { ...statsMin(), traffic: [{ key: pub('bob'), in: 1, out: 1 }, { key: pub('bob'), in: 2, out: 2 }] }), 'duplicate');
   bad('stats-traffic-self', 'Traffic with one\'s own key.', rec('stats', 'alice', T, { ...statsMin(), traffic: [{ key: pub('alice'), in: 1, out: 1 }] }), 'bad_field');
   bad('stats-traffic-bad-key', 'A traffic entry whose key is not a key.', rec('stats', 'alice', T, { ...statsMin(), traffic: [{ key: 'bob', in: 1, out: 1 }] }), 'bad_key');
-  bad('stats-mbps-over', 'Traffic over 1000000000 Mbps.', rec('stats', 'alice', T, { ...statsMin(), traffic: [{ key: pub('bob'), in: 1000000001, out: 1 }] }), 'bad_field');
+  ok('stats-traffic-past-pbps', 'Traffic is Traffic, up to 10^12 Mbps: past 1 Pbps is accepted (games send at most 10^9 for now).', rec('stats', 'alice', T, { ...statsMin(), traffic: [{ key: pub('bob'), in: 1000000000000, out: 1000000000000 }] }));
+  bad('stats-mbps-over', 'Traffic over 1000000000000 Mbps.', rec('stats', 'alice', T, { ...statsMin(), traffic: [{ key: pub('bob'), in: 1000000000001, out: 1 }] }), 'bad_field');
+  ok('announce-traffic-past-pbps', 'An announce\'s traffic is Traffic too: 10^12 Mbps each way is accepted.', rec('announce', 'alice', T, { ...announceBody(), traffic: { in: 1000000000000, out: 1000000000000 } }));
+  bad('announce-traffic-over', 'An announce\'s traffic over 1000000000000 Mbps.', rec('announce', 'alice', T, { ...announceBody(), traffic: { in: 1000000000001, out: 0 } }), 'bad_field');
+  bad('announce-cond-mbps-over', 'cond.minMbps stays Mbps (at most 10^9): only reported traffic is Traffic.', rec('announce', 'alice', T, { ...announceBody(), cond: { ...announceBody().cond, minMbps: 1000000001 } }), 'bad_field');
   bad('announce-pops-duplicate', 'A city twice in pops.', rec('announce', 'alice', T, { ...announceBody(), pops: ['fra', 'ams', 'fra'] }), 'duplicate');
 
   // --- body schema ---
@@ -408,7 +412,8 @@ const SID = rid(genesis);
 
   // --- stats: total (the network's whole traffic, optional) ---
   ok('stats-total', 'stats with total, the network\'s whole traffic in Mbps (optional; absent counts as 0).', rec('stats', 'alice', T, { ...statsMin(), total: 48000 }));
-  bad('stats-total-over', 'total over 1000000000 Mbps.', rec('stats', 'alice', T, { ...statsMin(), total: 1000000001 }), 'bad_field');
+  ok('stats-total-past-pbps', 'total is Traffic: 10^12 Mbps (1 Ebps) is accepted.', rec('stats', 'alice', T, { ...statsMin(), total: 1000000000000 }));
+  bad('stats-total-over', 'total over 1000000000000 Mbps.', rec('stats', 'alice', T, { ...statsMin(), total: 1000000000001 }), 'bad_field');
 
   // --- waves: a rate card (rates.wave), auto.wave (optional) and wave offers ---
   const WAVE = { routes: [{ a: 'ams', b: 'fra' }, { a: 'fra', b: 'lon' }], sizes: [{ gbps: 100, monthly: 900 }, { gbps: 400, monthly: 2400 }], term: 90 };
@@ -432,7 +437,7 @@ const SID = rid(genesis);
   ok('stats-cone', 'stats listing its transit customers (cust) and upstreams (up), and tier2.', rec('stats', 'alice', T, { ...statsMin(), cust: [pub('bob'), pub('carol')].sort(byStr), up: [pub('dave')], tier1: false, tier2: true }));
   ok('stats-biggest', 'The largest stats a game can send fits the 40960-byte limit: 512 POP cities, 256 traffic entries at the maximum, 128 customers, 16 upstreams, an AI setup.',
     rec('stats', 'alice', T, { ...statsMin(), pops: Object.fromEntries(Array.from({ length: 512 }, (_, i) => ['c' + String(i).padStart(7, '0'), 1000])),
-      traffic: keysN('t', 256).map(key => ({ key, in: 1000000000, out: 1000000000 })), total: 1000000000, pies: 10000000, cust: keysN('c', 128), up: keysN('u', 16),
+      traffic: keysN('t', 256).map(key => ({ key, in: 1000000000000, out: 1000000000000 })), total: 1000000000000, pies: 10000000, cust: keysN('c', 128), up: keysN('u', 16),
       tier2: true, ai: { model: 'm'.repeat(64), harness: 'h'.repeat(64) } }));
   bad('stats-cust-129', '129 transit customers (limit 128).', rec('stats', 'alice', T, { ...statsMin(), cust: keysN('c', 129) }), 'too_many');
   bad('stats-up-17', '17 upstreams (limit 16).', rec('stats', 'alice', T, { ...statsMin(), up: keysN('u', 17) }), 'too_many');

@@ -1,5 +1,5 @@
 {
-  "description": "total over 1000000000 Mbps.",
+  "description": "total is Traffic: 10^12 Mbps (1 Ebps) is accepted.",
   "input": {
     "now": 1767312100,
     "record": {
@@ -13,13 +13,14 @@
         "traffic": [],
         "tier1": false,
         "shareCountry": false,
-        "total": 1000000001
+        "total": 1000000000000
       },
-      "sig": "vOg7fv3ayjoR6PYkYQbLm1NcJTOoy-ZANo6iV6aMnwIpqTRFFK1kZjLPIZvpTyeMpqeH9YnJkojRA12xJpoUDw"
+      "sig": "hi2F8o-No8Ep300Lf6Kl24aF0Go0mnKt5dnnT_LOJ1e_XfAW-752wSWph8mWvrknA-6_hn-O_VjGQOZRoAGJCw"
     }
   },
   "expect": {
-    "ok": false,
-    "error": "bad_field"
+    "ok": true,
+    "kind": "stats",
+    "id": "XK1NeboOZhR8N00t1zGOSZnXuESSo3aTgWiSgPYrRpU"
   }
 }

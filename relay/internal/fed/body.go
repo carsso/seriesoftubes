@@ -69,9 +69,12 @@ func intIn(lo, hi int64) check {
 func count(n int64) check { return intIn(0, n) }
 
 var (
-	mbps  = intIn(0, 1000000000)
-	money = intIn(0, 1000000000000)
-	days  = intIn(1, 3650)
+	mbps = intIn(0, 1000000000)
+	// traffic is what a network reports for the boards (spec 2.1 Traffic): up to 1 Ebps, so the boards can rank past
+	// 1 Pbps. Deals stay in mbps: their sizes get multiplied by money.
+	traffic = intIn(0, 1000000000000)
+	money   = intIn(0, 1000000000000)
+	days    = intIn(1, 3650)
 )
 
 func boolean(v any) string {
@@ -572,7 +575,7 @@ func checkAnnounce(r *Record) string {
 			}
 			return ""
 		}),
-		req("traffic", obj(req("in", mbps), req("out", mbps))),
+		req("traffic", obj(req("in", traffic), req("out", traffic))),
 		req("policy", oneOf("open", "selective", "restrictive")),
 		opt("cond", condCheck),
 		req("rates", rates),
@@ -628,7 +631,7 @@ func checkStats(r *Record) string {
 		}),
 		opt("pies", count(10000000)),
 		req("traffic", list(func(v any) string {
-			if code := object(v, []field{req("key", keyCheck), req("in", mbps), req("out", mbps)}); code != "" {
+			if code := object(v, []field{req("key", keyCheck), req("in", traffic), req("out", traffic)}); code != "" {
 				return code
 			}
 			if v.(map[string]any)["key"] == r.Key {
@@ -636,7 +639,7 @@ func checkStats(r *Record) string {
 			}
 			return ""
 		}, 0, 256, true)),
-		opt("total", mbps),
+		opt("total", traffic),
 		opt("cust", others(MaxCust)),
 		opt("up", others(MaxUp)),
 		req("tier1", boolean),

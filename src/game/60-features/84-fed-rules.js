@@ -23,6 +23,10 @@ function fedEffAt(w,s){if(!w)return null;let lo=0,hi=w.length-1,i=-1;while(lo<=h
 // p95 of the busier direction (§10.4): with n values sorted, k = div(n * 5, 100) highest do not count.
 const fedP95=a=>{if(!a.length)return 0;a.sort((x,y)=>x-y);return a[a.length-1-fedDiv(a.length*5,100)];};
 const FED_FLOOR={pops:10,pies:100,traffic:1000,total:1000,cone:10},FED_NEWCOMER=30;
+// Growth in basis points (§10.5): div((cur - prev) * 10000, max(prev, floor)). Traffic goes up to 10^12 Mbps per partner,
+// so the product can pass 2^53: then it is worked out in BigInt (floor division; the divisor is positive).
+const fedGrowth=(cur,prev,floor)=>{const d=cur-prev,b=Math.max(prev,floor);if(Math.abs(d)<=9e11)return fedDiv(d*10000,b);
+  const D=BigInt(d),B=BigInt(b);let q=D*10000n/B;if(D<0n&&D*10000n%B!==0n)q-=1n;return Number(q);};
 /* One network's place on a board (§10.3 to §10.5, §10.12), worked out from records alone: how a game checks a row a
    server ranked (§9.5 rankwhy). q: {now, board, measure, division, exclude (keys the server leaves off), cities (a region,
    or null), filters (as in a rank request), founded (the cone board: key -> founded of its newest announce)}; recs: stats
@@ -68,7 +72,7 @@ function fedRankOne(q,key,recs,ann,states){const W=fedWindows(q.now),from=W.prev
     if(x){if(q.board==='traffic'){IN.push(x[0]);OUT.push(x[1]);}else if(q.board==='total'||q.board==='cone')IN.push(x[0]);else lo=x[0];}
     return q.board==='traffic'?Math.max(fedP95(IN),fedP95(OUT)):q.board==='total'||q.board==='cone'?fedP95(IN):lo||0;};
   let value=total(FED_WIN,2*FED_WIN,smp);
-  if(q.measure==='growth'){const prev=total(0,FED_WIN);value=fedDiv((value-prev)*10000,Math.max(prev,FED_FLOOR[q.board]));}
+  if(q.measure==='growth'){const prev=total(0,FED_WIN);value=fedGrowth(value,prev,FED_FLOOR[q.board]);}
   return {listed:true,kept:fedKept(q,key,l,ann,fedDiv(q.now,FED_DAY)),value};}
 // Whether a listed network passes a slice's division and filters (§10.12): l {body, cc}, a its newest announce body.
 function fedKept(q,key,l,a,day){const F=q.filters||{},ai=l.body.ai,keys=F.keys?new Set(F.keys):null;
