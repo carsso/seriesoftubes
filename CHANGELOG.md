@@ -6,8 +6,11 @@ All notable changes to this project are documented here. The project follows
 
 ## [Unreleased]
 
-- A Multimode server that shuts down now waits for its sessions with other servers and its first server-list download to end, instead of leaving them running behind it.
+## [4.1.3] — 2026-11-14
+
 - Joining a Multimode server no longer costs you Tier 1, and with it Pie in the Sky: other players' networks, including players who are Tier 1 themselves, no longer count towards the reach Tier 1 needs. The same goes for your customers and offers, which need 99% reach: other players you cannot reach no longer take it from you.
+- Multimode has a third server to play on: (BE) UNITIX - AS211184, in English, joins the server list (#364).
+- A Multimode server that shuts down now waits for its sessions with other servers and its first server-list download to end, instead of leaving them running behind it.
 
 ## [4.1.2] — 2026-11-14
 
