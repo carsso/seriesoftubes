@@ -6,7 +6,7 @@ All notable changes to this project are documented here. The project follows
 
 ## [Unreleased]
 
-- A Multimode server that shuts down now waits for its sessions with other servers to end, instead of leaving them running behind it.
+- A Multimode server that shuts down now waits for its sessions with other servers and its first server-list download to end, instead of leaving them running behind it.
 
 ## [4.1.2] — 2026-11-14
 

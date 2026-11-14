@@ -1500,7 +1500,8 @@ func (r *Relay) Run() {
 		r.fresh(r.now())
 		r.mu.Unlock()
 	})
-	go r.refreshRegistry()
+	// Tracked like the loops: it writes the registry cache and may send an update notice, never after Close.
+	r.spawn(r.refreshRegistry)
 }
 
 // spawn runs f in a goroutine Close waits for; once Close has begun, it runs nothing and returns false.
