@@ -25,11 +25,11 @@ test('a hostile player name never becomes markup: snapshot, NOC log, toasts, lis
   const id = p.ev(`fedNetId(${JSON.stringify(key('mallory').pub)})`);
   p.ev('compute()');
   for (const name of [p.ev('S.fedn.nets[0].name'), p.ev(`NET['${id}'].name`)]) assert.doesNotMatch(name, /[<>"'&]/, 'stored as plain text');
-  // Where a name could still arrive raw (any path that skips the snapshot), the sinks escape it: "no longer Tier 1".
+  // A raw name (any path that skips the snapshot) never reaches "no longer Tier 1": player networks do not count for it.
   p.ev(`NET['${id}'].name=${JSON.stringify(HOSTILE)};S.transit=[];S.pni=t1Need().map(n=>({id:'t'+n.id,net:n.id,city:'fra',tier:1,n:1,ready:0}));
     R.reachable=Object.fromEntries(NETS.map(n=>[n.id,n.id!=='${id}']))`);
   const why = p.ev('t1Why()');
-  assert.match(why, /&lt;img/, 'escaped in the reason');
+  assert.doesNotMatch(why, /img|onerror/, 'player networks are not in the reason');
   p.ev(`toast(tr('day_tick.you_are_no_longer_tier_1',{why:t1Why()}),'bad')`);
   assert.equal(injected(p), 0, 'toast');
   p.ev(`UI.left='noc';UI.leftOpen=true;renderAll()`);
