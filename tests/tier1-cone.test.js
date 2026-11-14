@@ -85,6 +85,22 @@ test('joining multiplayer keeps you Tier 1, even next to a player who is Tier 1 
   assert.deepEqual(errors, []);
 });
 
+test('players you cannot reach do not cost you customers either', () => {
+  const { ev, errors } = load();
+  t1Club(ev);
+  ev("for(const n of NETS)if(!R.reachable[n.id]){if(!S.pops[n.pops[0]])S.pops[n.pops[0]]={day:0,bb:null,boost:0,down:0,routers:1,gen:false};S.pni.push({id:'i'+n.id,net:n.id,city:n.pops[0],tier:0});}compute()");
+  // Two player Tier 1s: in nobody's cone, so together they take the reach the rules see below 99%.
+  const net = (k, name) => `{k:${JSON.stringify(k)},name:'${name}',asn:64512,home:'FR',pops:['par'],ix:[],mix:[300,300,400],tr:5e6,cust:3,pol:'open',q:1000,st:'active',ai:false,t1:true,bid:'',at:1}`;
+  ev(`S.fedn=fednClean({nets:[${net('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQ', 'Alice Net')},${net('bbcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQ', 'Bob Net')}]});compute()`);
+  assert.ok(ev("R.reach") < 0.99, 'the players carry demand you cannot reach');
+  assert.ok(ev("reachSolo()") > 0.999, 'without them you still reach everyone');
+  ev("S.biz.push({id:'h',name:'Host',type:'host',city:'fra',bw:1,rate:100,reqs:[],mood:0.5,day:0});compute()");
+  assert.doesNotMatch(ev("bizWhy(S.biz.find(b=>b.id==='h')).join(' ')"), /whole internet/, 'no reach complaint');
+  ev("renderAll()");
+  assert.notEqual(ev("document.getElementById('hReach').style.color"), 'var(--bad)', 'the HUD keeps the true reach, not in red');
+  assert.deepEqual(errors, []);
+});
+
 test('the long tail no longer stands between you and Tier 1', () => {
   const { ev, errors } = load();
   t1Club(ev);
