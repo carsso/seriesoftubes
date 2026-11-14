@@ -6,6 +6,9 @@ All notable changes to this project are documented here. The project follows
 
 ## [Unreleased]
 
+## [4.1.1] — 2026-11-14
+
+- Multimode has a second server to play on: charon.clucas.fr, in English and French, joins the server list (#361).
 - The relay downloads for OpenBSD and NetBSD are back: 4.1.0 could not be built for them. On those systems the relay does not watch free disk space.
 
 ## [4.1.0] — 2026-11-14
