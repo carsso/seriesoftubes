@@ -133,6 +133,16 @@ jobs:
         if: steps.has.outputs.relay == 'true'
         working-directory: relay
         run: go vet ./...
+      # Every platform the release ships builds here too, so a platform-specific API cannot fail only at release time.
+      - name: Builds for every release platform
+        if: steps.has.outputs.relay == 'true'
+        working-directory: relay
+        env:
+          CGO_ENABLED: '0'
+        run: |
+          for t in linux/arm windows/amd64 freebsd/amd64 openbsd/amd64 netbsd/amd64 darwin/arm64; do
+            GOOS=${t%/*} GOARCH=${t#*/} go build -o /dev/null ./cmd/relay || { echo "::error::build failed for $t"; exit 1; }
+          done
       - name: go test -race
         if: steps.has.outputs.relay == 'true'
         working-directory: relay
