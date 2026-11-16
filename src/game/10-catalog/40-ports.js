@@ -3,7 +3,8 @@
 const PORT_SLOT=i=>i===0?0.25:1;
 // Cache boxes sit behind an aggregation switch: one router port carries as many 100G boxes as its speed holds
 // (a 3.2T port takes 32), per site (#252).
-const portG=g=>{const s=RG[g].pn;return parseFloat(s)*(s.endsWith('T')?1000:1);};
+// Asked for every fibre channel when ports are counted: parsed once per model.
+const PORT_GC=[],portG=g=>{let v=PORT_GC[g];if(v===undefined){const s=RG[g].pn;v=PORT_GC[g]=parseFloat(s)*(s.endsWith('T')?1000:1);}return v;};
 const cachePerPort=(c,g)=>{const p=S.pops[c];return p?Math.max(1,Math.floor(portG(g===undefined?(p.rgen||0):g)/CACHE_CAP)):1;};
 // Boxes come in 100G and, behind 400G or faster router ports, 400G: cheaper per Gbps.
 const cacheG=x=>x.g===CACHE_BIG?CACHE_BIG:CACHE_CAP,cacheMo=x=>x.g===CACHE_BIG?CACHE_BIG_MO:CACHE_MO,cachesMo=()=>S.caches.reduce((a,x)=>a+cacheMo(x),0);

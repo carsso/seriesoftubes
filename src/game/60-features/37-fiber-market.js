@@ -181,10 +181,12 @@ function cmGrow(d){for(const b of S.biz){if(b.type!=='mwave')continue;const i=CM
    a product it sells there has buyers left at or above your floor, and no fiber on the route has room for it after what
    you keep back; or a carrier asked lately to grow its waves here and still cannot. waves: managed waves only (bigger
    optics make room for them); otherwise spectrum too (only a bigger line system adds slots). rs, sold: cmRoutes(), cmSold(). */
-function cmPress(l,rs,sold,waves){const C=S.cm,r=C&&rs.get(edgeKey(l)),d=S.day;if(!r||C.off[r.k])return false;const s=sold.get(r.k);
+// mw: the managed waves by link (cmWaves()), when asked for many fibers in a row.
+const cmWaves=()=>{const m=new Map();for(const b of S.biz)if(b.type==='mwave'){const a=m.get(b.link);if(a)a.push(b);else m.set(b.link,[b]);}return m;};
+function cmPress(l,rs,sold,waves,mw){const C=S.cm,r=C&&rs.get(edgeKey(l)),d=S.day;if(!r||C.off[r.k])return false;const s=sold.get(r.k);
   for(const p of CM_P){if(p==='iru'||waves&&p==='spec'||!cmOn(r.k,p))continue;const D=cmDem(r,p,d);
     if(D<C.p[p].min||Math.round(D-s[p])<1||cmIdx(r,p,s[p],0,d)*100<cmFloor(r.k,p)||r.ls.some(x=>cmCan(x,p)>0&&cmSpare(x,p)>0))continue;return true;}
-  return S.biz.some(b=>{if(b.type!=='mwave'||b.link!==l.id||!(b.gw>d-180))return false;const q=CM_W[CM_W.indexOf(cmWP(b.g))+1];
+  return (mw?mw.get(l.id)||[]:S.biz).some(b=>{if(b.type!=='mwave'||b.link!==l.id||!(b.gw>d-180))return false;const q=CM_W[CM_W.indexOf(cmWP(b.g))+1];
     return !!q&&(cmOptG(l)<CM_G[q]||cmFreeG(l)<(CM_G[q]-b.g)*(b.slots||1));});}
 // How many more spectrum slots a fiber's route wants today (the fiber panel's market line).
 function cmRoomSpec(l){const rs=cmRoutes(),r=rs.get(edgeKey(l));if(!r)return 0;return Math.max(0,Math.round(cmDem(r,'spec',S.day)-cmSold(rs).get(r.k).spec));}

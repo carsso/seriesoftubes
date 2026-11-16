@@ -129,6 +129,7 @@ test('#347 waves the broker cannot sell: bigger optics on a fiber a carrier ride
   order(ev, { at: 80 });
   ev(market);
   assert.equal(ev("(()=>{const rs=cmRoutes();return cmPress(S.links[0],rs,cmSold(rs),true)})()"), true, 'buyers left, no room');
+  assert.equal(ev("(()=>{const rs=cmRoutes(),s=cmSold(rs),mw=cmWaves();return S.links.every(l=>[true,false].every(w=>cmPress(l,rs,s,w,mw)===cmPress(l,rs,s,w)))})()"), true, 'the waves by link answer as the scan of every customer');
   const c0 = ev('dfCap(S.links[0])');
   ev('opsDay(S.day)');
   assert.equal(fiber(ev).sys, 'lite', 'never a day without the fiber a carrier rides');

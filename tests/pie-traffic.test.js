@@ -199,3 +199,26 @@ test('the traceroute shows a circuit through orbit hop by hop', () => {
   ev('closeModal()');
   assert.deepEqual(errors, []);
 });
+
+// pieLand() reads distances from a table and each crust's dishes from a list made once per compute: it must land every
+// terminal where the plain scan of every crust and dish lands it, with spats, full dishes and crusts, and lasers or not.
+test('terminals land where a plain scan of every crust and dish lands them', () => {
+  const { ev, errors } = load();
+  world(ev);
+  const ref = `(c,t,ds,hubs,bw=0,cr=null)=>{const T=BIZ_T[t],cc=CITY[c].cc;let best=null,bk=Infinity,bl=-1;
+    for(const id of hubs){if(!pieCovers(id,c))continue;const las=pieLased(id);if(T.las&&!las)continue;const cl=cr&&id in cr?cr[id]:Infinity;if(!(cl>0))continue;
+      for(let k=0;k<ds.length;k++){const d=ds[k];if(!pieCovers(id,d.city)||!pieLandOk(cc,d.cc))continue;const A=CITY[c],B=CITY[d.city],km=c===d.city?0:hav(A.lon,A.lat,B.lon,B.lat),left=Math.min(d.left,cl);
+        if(d.left>0&&(km<=PIE_BENT||(las&&d.ok))){const v=km+(d.ok?0:PIE_BENT*3)+(left<bw?1e6:0);if(v<bk||v===bk&&cl>bl){bk=v;bl=cl;best={k,cr:id,left};}}}}
+    return best;}`;
+  const diff = (setup) => ev(`(()=>{${setup};const ref=${ref},hubs=pieHubs(),ds=pieDishes();ds.forEach((d,i)=>{d.ok=i!==1;d.left=[40,0,900][i%3];});
+    const cv=pieCovDs(hubs,ds);let n=0,bad=[];
+    for(const cr of [null,{short:20},{short:0}])for(const t of ['pizza','flywifi','boat'])for(const bw of [0,50])for(const c of CITIES){n++;
+      const a=JSON.stringify(ref(c.id,t,ds,hubs,bw,cr)),b=JSON.stringify(pieLand(c.id,t,ds,hubs,bw,cr)),x=JSON.stringify(pieLand(c.id,t,ds,hubs,bw,cr,cv));
+      if(a!==b||a!==x)bad.push(c.id+' '+t+' '+bw+' '+a+' '+b+' '+x);}
+    return n+' '+bad.slice(0,3).join(' | ');})()`);
+  assert.match(diff(''), /^\d+ $/);
+  assert.match(diff("S.pie.spat.home={cc:CITY.lon.cc,ok:false}"), /^\d+ $/, 'a spat keeps a country on its own dishes');
+  assert.match(diff('S.pie.spat.home=null;S.pie.crusts.short.cohorts[0].las=false'), /^\d+ $/, 'no lasers');
+  assert.equal(ev("CITIES.every(a=>['fra','pcn','syd'].every(b=>pieKm(a.id,b)===hav(a.lon,a.lat,CITY[b].lon,CITY[b].lat)))"), true);
+  assert.deepEqual(errors, []);
+});

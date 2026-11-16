@@ -242,12 +242,13 @@ const OPS_RUN={
        X.pay('optics',()=>{ACT.setChCount({id:l.id,o,n});return (l.ch||[]).length>before;});if((l.ch||[]).length<=before)break;
        cap+=optG(o,l);X.did('optics',l.a+'|'+l.b);yield;}}},
  *optup(X){const at=opsP('optup','at')/100,goal=opsP('optup','sys'),swap=opsP('optup','swap');let ups=0,tries=0;
-   const hot=l=>{const c=dfCap(l);return c>0&&((R.load&&R.load[l.id])||0)*opsAhead()>=c*at;},full=l=>freeCh(l)<=0,u=l=>((R.load&&R.load[l.id])||0)/Math.max(1,dfCap(l));
+   // What is sold on each fiber, once per order: the intern signs nothing, and setChCount still checks it live.
+   const fu=fiberUse(),hot=l=>{const c=dfCap(l);return c>0&&((R.load&&R.load[l.id])||0)*opsAhead()>=c*at;},full=l=>freeCh(l,fu)<=0,u=l=>((R.load&&R.load[l.id])||0)/Math.max(1,dfCap(l));
    // Buyers the fiber cannot serve count as much as your own traffic (#347): waves for bigger optics, spectrum too for a
    // bigger line system. The routes are worked out once a night; the line system swap still never darkens a fiber with
    // a customer on it (opsDark()).
-   const rs=S.cm?cmRoutes():null,sold=rs&&cmSold(rs),press=(l,w)=>!!rs&&cmPress(l,rs,sold,w);
-   const ls=S.links.filter(l=>l.kind==='df'&&!l.seat&&l.ready<=S.day&&!(l.eqDown>S.day)&&!(l.cut>S.day)).sort((a,b)=>u(b)-u(a));
+   const rs=S.cm?cmRoutes():null,sold=rs&&cmSold(rs),mw=rs&&cmWaves(),press=(l,w)=>!!rs&&cmPress(l,rs,sold,w,mw);
+   const ls0=S.links.filter(l=>l.kind==='df'&&!l.seat&&l.ready<=S.day&&!(l.eqDown>S.day)&&!(l.cut>S.day)),uk=new Map(ls0.map(l=>[l,u(l)])),ls=ls0.sort((a,b)=>uk.get(b)-uk.get(a));
    for(const l of ls){
      // The line system: one step at a time up to the chosen one, or the next one where the fiber is full and hot.
      const want=goal==='next'?(full(l)&&(hot(l)||press(l,false))?sysNext(l):null):SYS_RANK[l.sys]<SYS_RANK[goal]?goal:null;

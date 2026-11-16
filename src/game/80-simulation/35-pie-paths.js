@@ -23,7 +23,11 @@
    enters the network there as business demand. Spats: pieSpatHome(cc) keeps a country's customers on its own dishes,
    pieAirBlock(a,b) keeps country a's traffic off country b's dishes; both apply to backhaul as to terminals. */
 const PIE_C=300,PIE_RE=6371,PIE_MIN_KM=3000,PIE_BENT=1000,PIE_SPILL=8,PIE_HOP=1,PIE_FOOT=3,PIE_LAT_PREM=0.5,PIE_BH_W=1e5;
-const pieKm=(a,b)=>{const A=CITY[a],B=CITY[b];return hav(A.lon,A.lat,B.lon,B.lat);};
+// Distances are asked hundreds of thousands of times a compute (terminals x crusts x dishes): kept per city, cities never move.
+const PIE_KMR=[];
+const pieKmI=(ai,bi)=>{const r=PIE_KMR[ai]||(PIE_KMR[ai]=new Float64Array(CITIES.length).fill(NaN));let v=r[bi];
+  if(v!==v){const A=CITIES[ai],B=CITIES[bi];v=r[bi]=hav(A.lon,A.lat,B.lon,B.lat);}return v;};
+const pieKm=(a,b)=>pieKmI(CIDX[a],CIDX[b]);
 // Does crust id cover city c? A shell reaches a few degrees past its inclination; a polar one reaches everywhere.
 const pieCovers=(id,c)=>!!CRUSTS[id].polar||Math.abs(CITY[c].lat)<=CRUSTS[id].inc+PIE_FOOT;
 const pieLased=id=>pieLiveLas(id)>CRUSTS[id].full*PIE_RAW;
@@ -36,10 +40,13 @@ const pieLandOk=(ca,dc)=>!(pieSpatHome(ca)&&dc!==ca)&&!pieAirBlock(ca,dc);
    crust any dish on the backbone. Some customers need lasers (flywifi, marsorb: T.las). cr: what each crust has left (none: no limit).
    Between crusts that land it as well, the one with most room left: overflow fills an idle crust, not the polar one far north depends on.
    A dish cut off from the backbone (a POP whose fiber is not lit yet) comes last: its traffic may have no way out. */
-function pieLand(c,t,ds,hubs,bw=0,cr=null){const T=BIZ_T[t],cc=CITY[c].cc;let best=null,bk=Infinity,bl=-1;
-  for(const id of hubs){if(!pieCovers(id,c))continue;const las=pieLased(id);if(T.las&&!las)continue;const cl=cr&&id in cr?cr[id]:Infinity;if(!(cl>0))continue;
-    for(let k=0;k<ds.length;k++){const d=ds[k];if(!pieCovers(id,d.city)||!pieLandOk(cc,d.cc))continue;const km=c===d.city?0:pieKm(c,d.city),left=Math.min(d.left,cl);
-      if(d.left>0&&(km<=PIE_BENT||(las&&d.ok))){const v=km+(d.ok?0:PIE_BENT*3)+(left<bw?1e6:0);if(v<bk||v===bk&&cl>bl){bk=v;bl=cl;best={k,cr:id,left};}}}}
+// For each hub, the dishes it covers (indices into ds, in order) and whether it is lasered: pieLand's loops, once per dish list.
+const pieCovDs=(hubs,ds)=>({las:hubs.map(pieLased),ci:ds.map(d=>CIDX[d.city]),k:hubs.map(id=>{const o=[];for(let k=0;k<ds.length;k++)if(pieCovers(id,ds[k].city))o.push(k);return o;})});
+function pieLand(c,t,ds,hubs,bw=0,cr=null,cv=pieCovDs(hubs,ds)){const T=BIZ_T[t],cc=CITY[c].cc,ci=CIDX[c],okc={};let best=null,bk=Infinity,bl=-1;
+  for(let h=0;h<hubs.length;h++){const id=hubs[h];if(!pieCovers(id,c))continue;const las=cv.las[h];if(T.las&&!las)continue;const cl=cr&&id in cr?cr[id]:Infinity;if(!(cl>0))continue;
+    for(const k of cv.k[h]){const d=ds[k];if(!(d.left>0))continue;let ok=okc[d.cc];if(ok===undefined)ok=okc[d.cc]=pieLandOk(cc,d.cc);if(!ok)continue;
+      const km=ci===cv.ci[k]?0:pieKmI(ci,cv.ci[k]),left=Math.min(d.left,cl);
+      if(km<=PIE_BENT||(las&&d.ok)){const v=km+(d.ok?0:PIE_BENT*3)+(left<bw?1e6:0);if(v<bk||v===bk&&cl>bl){bk=v;bl=cl;best={k,cr:id,left};}}}}
   return best;}
 function pieGraph(adj,edges,COMP,pops,NE){const NC=CITIES.length,hubs=pieHubs(),ds=pieDishes();
   const X={hubs,ds,term:{},gs:{},gx:{},gsBw:{},cr:{},isl:[],l2o:{},l2p:{},up:[],ne:NE,adj,nc:NC,sk:[],bh:[],bhNo:[],res:{},main:-1};
@@ -50,8 +57,9 @@ function pieGraph(adj,edges,COMP,pops,NE){const NC=CITIES.length,hubs=pieHubs(),
   for(const d of ds){const ci=CIDX[d.city];d.ok=COMP[ci]>=0&&COMP[ci]===main;d.left=d.g;if(!d.ok)X.isl.push(d.city);}
   // Terminals first: each takes what its dish and its crust have left, in S.biz order. What one dish cannot hold spills onto
   // the next one in reach (a customer bigger than a full dish); gs is the first dish, gx every [dish, Gbps] when split.
+  const cv=hubs.length?pieCovDs(hubs,ds):null;
   if(hubs.length)for(const b of S.biz){const T=BIZ_T[b.type];if(!T.orbit)continue;let r=b.bw;const parts=[];
-    for(let i=0;i<PIE_SPILL&&r>0;i++){const L=pieLand(b.city,b.type,ds,hubs,r,X.cr);if(!L)break;const d=ds[L.k],a=Math.max(0,Math.min(r,d.left,X.cr[L.cr]));if(!(a>0))break;
+    for(let i=0;i<PIE_SPILL&&r>0;i++){const L=pieLand(b.city,b.type,ds,hubs,r,X.cr,cv);if(!L)break;const d=ds[L.k],a=Math.max(0,Math.min(r,d.left,X.cr[L.cr]));if(!(a>0))break;
       d.left-=a;X.cr[L.cr]-=a;r-=a;X.gsBw[d.city]=(X.gsBw[d.city]||0)+a;parts.push([d.city,a]);}
     if(!parts.length)continue;X.gs[b.id]=parts[0][0];X.term[b.id]=b.bw-r;if(parts.length>1)X.gx[b.id]=parts;}
   // Backhaul for cut-off POPs, after terminals and before sky circuits (see the top).
@@ -64,9 +72,12 @@ function pieGraph(adj,edges,COMP,pops,NE){const NC=CITIES.length,hubs=pieHubs(),
   if(las.length){const sky=[];
     for(const d of ds){if(!d.ok||!(d.left>0))continue;const cs=las.filter(id=>pieCovers(id,d.city));if(!cs.length)continue;const ci=CIDX[d.city],n=NC+sky.length;adj[n]=[];
       const e={id:'pie:'+d.city,a:d.city,b:d.city,ai:ci,bi:n,i:X.ne++,km:0,cap:d.left,scap:0,w:Infinity,lat:CRUSTS[cs[0]].alt/PIE_C+PIE_HOP,slat:Infinity,links:[],res:0,ld:0,tr:null,pl:0,jk:0,f:1,sky:d};
-      edges[e.id]=e;adj[ci].push([n,e]);adj[n].push([ci,e]);X.up.push(e);X.sk[n-NC]=d.city;sky.push({d,n,cs});}
-    for(let i=0;i<sky.length;i++)for(let j=i+1;j<sky.length;j++){const p=sky[i],q=sky[j],km=pieKm(p.d.city,q.d.city);if(km<PIE_MIN_KM)continue;
-      const cs=p.cs.filter(id=>q.cs.includes(id));if(!cs.length)continue;const cap=cs.reduce((a,id)=>a+X.cr[id],0);if(!(cap>0))continue;
+      edges[e.id]=e;adj[ci].push([n,e]);adj[n].push([ci,e]);X.up.push(e);X.sk[n-NC]=d.city;sky.push({d,n,cs,ci,ck:cs.join()});}
+    // Most dishes share their crusts: the common ones per pair of crust sets, worked out once.
+    const csm=new Map();
+    for(let i=0;i<sky.length;i++)for(let j=i+1;j<sky.length;j++){const p=sky[i],q=sky[j],km=pieKmI(p.ci,q.ci);if(km<PIE_MIN_KM)continue;
+      const kk=p.ck+'|'+q.ck;let m=csm.get(kk);if(!m){const cs=p.cs.filter(id=>q.cs.includes(id));csm.set(kk,m={cs,cap:cs.reduce((a,id)=>a+X.cr[id],0)});}
+      const {cs,cap}=m;if(!cs.length||!(cap>0))continue;
       const e={id:'pie:'+p.d.city+'~'+q.d.city,a:p.d.city,b:q.d.city,ai:p.n,bi:q.n,i:X.ne++,km:Math.round(km),cap,scap:0,w:Infinity,lat:km*(PIE_RE+CRUSTS[cs[0]].alt)/PIE_RE/PIE_C,slat:Infinity,links:[],res:0,ld:0,tr:null,pl:0,jk:0,f:1,sky:'las',cs};
       edges[e.id]=e;adj[p.n].push([q.n,e]);adj[q.n].push([p.n,e]);}
     // Every Gbps through space goes up one dish and down another: the uplinks together carry at most twice what the crusts have left.
